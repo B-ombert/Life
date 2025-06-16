@@ -63,6 +63,13 @@ public class life extends Application {
         gridPane.setVgap(1);
         gridPane.setPadding(new Insets(10));
 
+        ComboBox<String> cellType = new ComboBox<>();
+        cellType.getItems().addAll("cell", "red cell", "wall");
+        cellType.setValue("cell");
+
+        HBox specialBox = new HBox(5, new Label("Cell"), cellType);
+        specialBox.setPadding(new Insets(5));
+        specialBox.setAlignment(Pos.CENTER_LEFT);
 
         ScrollPane scrollPane = new ScrollPane(gridPane);
         scrollPane.setPrefSize(865, 865);
@@ -71,7 +78,7 @@ public class life extends Application {
             initial = new int[rows][cols];
         }
 
-        generateGrid(gridPane);
+        generateGrid(gridPane, cellType);
 
         updateButton.setOnAction(event -> {
            try {
@@ -94,7 +101,7 @@ public class life extends Application {
                cols = newCols;
                initial = newInitial;
 
-               generateGrid(gridPane);
+               generateGrid(gridPane, cellType);
 
            }catch (NumberFormatException e) {
                Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid Input");
@@ -176,19 +183,24 @@ public class life extends Application {
                     placePattern(initial, x, y, 2);
                 }
 
-                generateGrid(gridPane);
+                generateGrid(gridPane, cellType);
             }catch (NumberFormatException e) {
                 Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid input");
                 alert.showAndWait();
             }
         });
 
-        patternBox.getChildren().addAll(new Label("Pattern"), patternComboBox, new Label("X:"), xField, new Label("Y:"), yField, placeButton);
+        patternBox.getChildren().addAll(
+                new Label("Pattern"), patternComboBox,
+                new Label("X:"), xField,
+                new Label("Y:"), yField,
+                placeButton);
 
         VBox root = new VBox(10,
                 new HBox(10, new Label("Riadky:"), rowsField, new Label("Stĺpce:"), colsField),
                 new HBox(10, new Label("Delay (ms):"), delayField),
                 patternBox,
+                specialBox,
                 scrollPane,
                 new HBox(10, updateButton, saveOriginalButton, startButton)
         );
@@ -339,19 +351,30 @@ public class life extends Application {
         }
     }
 
-    private void generateGrid(GridPane gridPane){
+    private void generateGrid(GridPane gridPane, ComboBox<String> cellType){
         gridPane.getChildren().clear();
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 StackPane cell = new StackPane();
                 cell.setPrefSize(cellSize, cellSize);
-                cell.setStyle("-fx-border-color: black; -fx-background-color: " + (initial[i][j] == 1 ? "black" : "white") + ";");
+                cell.setStyle("-fx-border-color: black; -fx-background-color: " + colorFromInt(initial[i][j]) + ";");
                 final int row = i, col = j;
 
                 cell.setOnMouseClicked(event -> {
                     if (event.getButton() == MouseButton.PRIMARY) {
-                        initial[row][col] = 1 - initial[row][col];
-                        cell.setStyle("-fx-border-color: black; -fx-background-color: " + (initial[row][col] == 1 ? "black" : "white") + ";");
+                        String type = cellType.getValue();
+                        switch (type) {
+                            case "cell" -> initial[row][col] = 1;
+                            case "red cell" -> initial[row][col] = 2;
+                            case "wall" -> initial[row][col] = -1;
+                        }
+
+                        cell.setStyle("-fx-border-color: black; -fx-background-color: " + colorFromInt(initial[row][col]) + ";");
+                    }
+
+                    else if (event.getButton() == MouseButton.SECONDARY) {
+                        initial[row][col] = 0;
+                        cell.setStyle("-fx-border-color: black; -fx-background-color: white;");
                     }
                 });
 
@@ -399,7 +422,7 @@ public class life extends Application {
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
                 if (map[i][j] > 0){
-                    gc.setFill(colorFromInt(map[i][j]));
+                    gc.setFill(Color.web(colorFromInt(map[i][j])));
                     gc.fillRect(j*cellSize, i*cellSize, cellSize, cellSize);
                 }
 
@@ -409,10 +432,10 @@ public class life extends Application {
         }
     }
 
-    private Color colorFromInt(int color){
-        if(color == 0) return Color.WHITE;
-        if(color == -1) return Color.GREEN;
-        return color%2 == 0 ? Color.RED : Color.BLACK;
+    private String colorFromInt(int color){
+        if(color == 0) return "FFFFFF";
+        if(color == -1) return "#00FF00";
+        return color%2 == 0 ? "#FF0000" : "#000000";
     }
 
     private int[][] copy(int[][] original){
