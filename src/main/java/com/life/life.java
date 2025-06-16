@@ -56,6 +56,7 @@ public class life extends Application {
 
         Button startButton = new Button("Start");
         Button updateButton = new Button("Update grid");
+        Button saveOriginalButton = new Button("Save as original");
 
         GridPane gridPane = new GridPane();
         gridPane.setHgap(1);
@@ -101,6 +102,16 @@ public class life extends Application {
            }
         });
 
+        saveOriginalButton.setOnAction(event -> {
+            if (initial != null) {
+                originalState = new int[initial.length][initial[0].length];
+                for(int row = 0; row < rows; row++) {
+                    System.arraycopy(initial[row], 0, originalState[row], 0, originalState[row].length);
+                }
+                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Original state updated.");
+                alert.showAndWait();
+            }
+        });
 
         startButton.setOnAction(e -> {
 
