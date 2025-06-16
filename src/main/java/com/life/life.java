@@ -405,10 +405,13 @@ public class life extends Application {
     }
 
     private int[][] copy(int[][] original){
-        int[][] copy = new int[original.length][original[0].length];
+        int[][] copy = new int[rows][cols];
 
-        for (int i = 0; i < original.length; i++) {
-            System.arraycopy(original[i], 0, copy[i], 0, original[i].length);
+        int minRows = Math.min(original.length, rows);
+        int minCols = Math.min(original.length, cols);
+
+        for (int i = 0; i < minRows; i++) {
+            System.arraycopy(original[i], 0, copy[i], 0, minCols);
         }
         return copy;
     }
