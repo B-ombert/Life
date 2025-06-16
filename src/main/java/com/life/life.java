@@ -81,12 +81,18 @@ public class life extends Application {
                    throw new NumberFormatException();
                }
 
-               if (initial.length != newRows || initial[0].length != newCols) {
-                   initial = new int[newRows][newCols];
+               int[][] newInitial = new int[newRows][newCols];
+
+               for(int row = 0; row < Math.min(rows, newRows); row++) {
+                   for(int col = 0; col < Math.min(cols, newCols); col++) {
+                       newInitial[row][col] = initial[row][col];
+                   }
                }
 
                rows = newRows;
                cols = newCols;
+               initial = newInitial;
+
                generateGrid(gridPane);
 
            }catch (NumberFormatException e) {
@@ -400,6 +406,7 @@ public class life extends Application {
 
     private int[][] copy(int[][] original){
         int[][] copy = new int[original.length][original[0].length];
+
         for (int i = 0; i < original.length; i++) {
             System.arraycopy(original[i], 0, copy[i], 0, original[i].length);
         }
