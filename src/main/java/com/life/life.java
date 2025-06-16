@@ -190,7 +190,7 @@ public class life extends Application {
                 new HBox(10, new Label("Delay (ms):"), delayField),
                 patternBox,
                 scrollPane,
-                new HBox(10, updateButton, startButton)
+                new HBox(10, updateButton, saveOriginalButton, startButton)
         );
 
         root.setPadding(new Insets(10));
