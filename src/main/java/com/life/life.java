@@ -34,6 +34,11 @@ public class life extends Application {
 
     //survive min/ survive max/ birth
     private static int[] cell1rules = {2, 3, 3};
+    private static int[] cell2rules = {2, 3, 3};
+    private static int cell1AgeLimit = 0;
+    private static int cell2AgeLimit = 0;
+
+    private static float lifeChance = 0f;
 
     private int[][] map = new int[rows][cols];
     private int[][] buffer = new int[rows][cols];
@@ -51,8 +56,11 @@ public class life extends Application {
         setupStage.setTitle("Setup");
 
         TextField rowsField = new TextField(String.valueOf(rows));
+        rowsField.setPrefWidth(60);
         TextField colsField = new TextField(String.valueOf(cols));
+        colsField.setPrefWidth(60);
         TextField delayField = new TextField(String.valueOf(delay));
+        delayField.setPrefWidth(60);
 
         Button startButton = new Button("Start");
         Button updateButton = new Button("Update grid");
@@ -196,19 +204,29 @@ public class life extends Application {
                 new Label("Y:"), yField,
                 placeButton);
 
+        HBox rowsBox = new HBox(5, new Label("Riadky:"), rowsField);
+        HBox colsBox = new HBox(5, new Label("Stĺpce:"), colsField);
+        HBox delayBox = new HBox(5, new Label("Delay (ms):"), delayField);
+
+        HBox paramsBox = new HBox(15, rowsBox, colsBox, delayBox);
+        paramsBox.setAlignment(Pos.CENTER_LEFT);
+
+        HBox buttonsBox = new HBox(10, updateButton, saveOriginalButton, startButton);
+        buttonsBox.setAlignment(Pos.CENTER);
+
+
+
         VBox root = new VBox(10,
-                new HBox(10, new Label("Riadky:"), rowsField, new Label("Stĺpce:"), colsField),
-                new HBox(10, new Label("Delay (ms):"), delayField),
+                paramsBox,
                 patternBox,
                 specialBox,
                 scrollPane,
-                new HBox(10, updateButton, saveOriginalButton, startButton)
+                buttonsBox
         );
 
         root.setPadding(new Insets(10));
         setupStage.setScene(new Scene(root));
         setupStage.show();
-
     }
 
     private void run(Stage stage) {
@@ -386,13 +404,72 @@ public class life extends Application {
     private void update(){
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                int neighors = liveNeighbors1(i, j);
+                int neighors1 = liveNeighbors1(i, j);
+                int neighors2 = liveNeighbors2(i, j);
+
+                //living cell
                 if (map[i][j] > 0){
-                    buffer[i][j] = (neighors >= cell1rules[0] && neighors <= cell1rules[1]) ? 1 : 0;
+
+                    //normal cell
+                    if(map[i][j]%2==1){
+                        buffer[i][j] = (neighors1 >= cell1rules[0] && neighors1 <= cell1rules[1]) ? 1 : 0;
+
+                        if(cell1AgeLimit!=0){
+                            //age
+                            buffer[i][j] += 2;
+                            if(buffer[i][j]>2*cell1AgeLimit-1){
+                                //cell too old
+                                buffer[i][j] = 0;
+                            }
+                        }
+                    }
+
+                    //red cell
+                    else{
+                        buffer[i][j] = (neighors2 >= cell2rules[0] && neighors2 <= cell2rules[1]) ? 2 : 0;
+
+                        if(cell2AgeLimit!=0){
+                            //age
+                            buffer[i][j] += 2;
+                            if(buffer[i][j]>2*cell2AgeLimit){
+                                //die
+                                buffer[i][j] = 0;
+                            }
+                        }
+                    }
+
                 }
+
+                //wall
+                else if (map[i][j] == -1) {
+                    buffer[i][j] = -1;
+                }
+
+                //dead
                 else{
-                    buffer[i][j] = (neighors == cell1rules[2]) ? 1 : 0;
+                    if(neighors1==cell1rules[2] && neighors2==cell2rules[2]){
+                        buffer[i][j] = (Math.random() < 0.5) ? 1 : 2;
+                    }
+
+                    else if(neighors1==cell1rules[2]){
+                        buffer[i][j] = 1;
+                    }
+
+                    else if(neighors2==cell2rules[2]){
+                        buffer[i][j] = 2;
+                    }
+
+                    else{
+                        if(Math.random() > 1-lifeChance){
+                            buffer[i][j] = (Math.random() < 0.5) ? 1 : 2;
+                        }
+
+                        else{
+                            buffer[i][j] = 0;
+                        }
+                    }
                 }
+
             }
         }
 
@@ -414,6 +491,19 @@ public class life extends Application {
         return count;
     }
 
+    private int liveNeighbors2(int row, int col){
+        int count = 0;
+        for (int dr = -1; dr <= 1; dr++){
+            for (int dc = -1; dc <= 1; dc++){
+                if (dr == 0 && dc == 0 ) continue;
+                int newRow = (row + dr + rows) % rows;
+                int newCol = (col + dc + cols) % cols;
+                if (map[newRow][newCol] > 0 && map[newRow][newCol]%2==0) count++;
+            }
+        }
+        return count;
+    }
+
     private void draw(){
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.setFill(Color.WHITE);
@@ -421,10 +511,8 @@ public class life extends Application {
 
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
-                if (map[i][j] > 0){
-                    gc.setFill(Color.web(colorFromInt(map[i][j])));
-                    gc.fillRect(j*cellSize, i*cellSize, cellSize, cellSize);
-                }
+                gc.setFill(Color.web(colorFromInt(map[i][j])));
+                gc.fillRect(j*cellSize, i*cellSize, cellSize, cellSize);
 
                 gc.setStroke(Color.BLACK);
                 gc.strokeRect(j*cellSize, i*cellSize, cellSize, cellSize);
