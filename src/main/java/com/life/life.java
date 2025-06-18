@@ -9,10 +9,7 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseButton;
-import javafx.scene.layout.GridPane;
-import javafx.scene.layout.HBox;
-import javafx.scene.layout.StackPane;
-import javafx.scene.layout.VBox;
+import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
@@ -38,7 +35,8 @@ public class life extends Application {
     private static int cell1AgeLimit = 4;
     private static int cell2AgeLimit = 0;
 
-    private static float lifeChance = 0f;
+    private static double lifeChance = 0d;
+    private static double blackRandomPriority = 1d;
 
     private int[][] map = new int[rows][cols];
     private int[][] buffer = new int[rows][cols];
@@ -75,7 +73,93 @@ public class life extends Application {
         cellType.getItems().addAll("cell", "red cell", "wall");
         cellType.setValue("cell");
 
-        HBox specialBox = new HBox(5, new Label("Cell"), cellType);
+        CheckBox ageLimit = new CheckBox("Enable age limit");
+        if(cell1AgeLimit > 0 || cell2AgeLimit > 0) {
+            ageLimit.setSelected(true);
+        }
+
+        TextField ageLimitField1 = new TextField(String.valueOf(cell1AgeLimit));
+        ageLimitField1.setPrefWidth(50);
+        TextField ageLimitField2 = new TextField(String.valueOf(cell2AgeLimit));
+        ageLimitField2.setPrefWidth(50);
+
+        Label cell1AgeLimitLabel = new Label("Standard cell age limit:");
+        Label cell2AgeLimitLabel = new Label("Red cell age limit:");
+
+        HBox ageBox = new HBox(5, cell1AgeLimitLabel, ageLimitField1, cell2AgeLimitLabel, ageLimitField2);
+        ageBox.setAlignment(Pos.CENTER_LEFT);
+        ageBox.setVisible(ageLimit.isSelected());
+        ageBox.managedProperty().bind(ageLimit.visibleProperty());
+
+        ageLimit.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+           ageBox.setVisible(isSelected);
+        });
+
+        CheckBox enableRandom = new CheckBox("Enable random cell revival");
+        double maxRevivalChance = 0.05;
+        double revivalChance = 0.001;
+
+        Slider revivalChanceSlider = new Slider(0.0, maxRevivalChance, maxRevivalChance);
+        revivalChanceSlider.setBlockIncrement(revivalChance/50);
+        revivalChanceSlider.setPrefWidth(200);
+
+        Label revivalChanceLabel = new Label(String.format("Revival chance: %.2f%%", revivalChanceSlider.getValue() * 100));
+
+        Label blackPriorityLabel = new Label("Probability that revived cell will be standard");
+
+        Slider blackPrioritySlider = new Slider(0.0, 1.0, blackRandomPriority);
+        blackPrioritySlider.setShowTickLabels(true);
+        blackPrioritySlider.setShowTickMarks(true);
+        blackPrioritySlider.setMajorTickUnit(0.2);
+        blackPrioritySlider.setBlockIncrement(0.05);
+        blackPrioritySlider.setPrefWidth(200);
+
+        Label blackPriorityValueLabel = new Label(String.format("%.2f%%", blackPrioritySlider.getValue()*100));
+
+
+        HBox revivalBox = new HBox(10, revivalChanceSlider, revivalChanceLabel);
+        revivalBox.setAlignment(Pos.CENTER_LEFT);
+
+        HBox priorityBox = new HBox(10, blackPriorityLabel, blackPrioritySlider, blackPriorityValueLabel);
+        priorityBox.setAlignment(Pos.CENTER_LEFT);
+
+        revivalBox.setVisible(false);
+        priorityBox.setVisible(false);
+
+        revivalBox.visibleProperty().bind(enableRandom.selectedProperty());
+        priorityBox.visibleProperty().bind(enableRandom.selectedProperty());
+
+        revivalChanceSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            lifeChance = newVal.doubleValue();
+            revivalChanceLabel.setText(String.format("Revival chance: %.2f%%", lifeChance*100));
+        });
+
+        blackPrioritySlider.valueProperty().addListener((obs, oldVal, newVal) -> {
+            blackRandomPriority = newVal.doubleValue();
+            blackPriorityValueLabel.setText(String.format("%.2f%%", blackRandomPriority*100));
+        });
+
+        enableRandom.setSelected(lifeChance > 0);
+
+        enableRandom.selectedProperty().addListener((obs, wasSelected, isSelected) -> {
+            if (!isSelected) {
+                lifeChance = 0.0;
+                revivalChanceSlider.setValue(0.0);
+            } else {
+                if (lifeChance == 0.0) {
+                    lifeChance = maxRevivalChance / 10;
+                    revivalChanceSlider.setValue(lifeChance);
+                }
+            }
+        });
+
+        VBox specialBox = new VBox(5, new Label("Cell type:"), cellType,
+                ageLimit,
+                ageBox,
+                enableRandom,
+                revivalBox,
+                priorityBox
+        );
         specialBox.setPadding(new Insets(5));
         specialBox.setAlignment(Pos.CENTER_LEFT);
 
@@ -141,6 +225,25 @@ public class life extends Application {
 
                 if (initial.length != rows || initial[0].length != cols) {
                     initial = new int[rows][cols];
+                }
+
+                if(ageLimit.isSelected()) {
+                    try {
+                        cell1AgeLimit = Integer.parseInt(ageLimitField1.getText());
+                        cell2AgeLimit = Integer.parseInt(ageLimitField2.getText());
+
+                        if(cell1AgeLimit < 0 || cell2AgeLimit < 0) {
+                            throw new NumberFormatException();
+                        }
+                    }
+                    catch (NumberFormatException ex) {
+                        Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid Input");
+                        alert.showAndWait();
+                        return;
+                    }
+                }
+                else{
+                    cell1AgeLimit = cell2AgeLimit = 0;
                 }
 
                 setupStage.close();
@@ -214,18 +317,23 @@ public class life extends Application {
         HBox buttonsBox = new HBox(10, updateButton, saveOriginalButton, startButton);
         buttonsBox.setAlignment(Pos.CENTER);
 
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
 
-
-        VBox root = new VBox(10,
-                paramsBox,
+        VBox controls = new VBox(10,
                 patternBox,
+                paramsBox,
                 specialBox,
-                scrollPane,
-                buttonsBox
-        );
+                spacer,
+                buttonsBox);
 
-        root.setPadding(new Insets(10));
-        setupStage.setScene(new Scene(root));
+        HBox mainBox = new HBox(15,
+                controls,
+                scrollPane);
+
+
+        mainBox.setPadding(new Insets(10));
+        setupStage.setScene(new Scene(mainBox));
         setupStage.show();
     }
 
@@ -409,7 +517,6 @@ public class life extends Application {
 
                 //living cell
                 if (map[i][j] > 0){
-                    //todo implement dying from age
                     //normal cell
                     if(map[i][j]%2==1){
                         if(neighors1 < cell1rules[0] || neighors1 > cell1rules[1]){
@@ -471,7 +578,7 @@ public class life extends Application {
 
                     else{
                         if(Math.random() > 1-lifeChance){
-                            buffer[i][j] = (Math.random() < 0.5) ? 1 : 2;
+                            buffer[i][j] = (Math.random() < blackRandomPriority) ? 1 : 2;
                         }
 
                         else{
