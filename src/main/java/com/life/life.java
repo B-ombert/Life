@@ -35,7 +35,7 @@ public class life extends Application {
     //survive min/ survive max/ birth
     private static int[] cell1rules = {2, 3, 3};
     private static int[] cell2rules = {2, 3, 3};
-    private static int cell1AgeLimit = 0;
+    private static int cell1AgeLimit = 4;
     private static int cell2AgeLimit = 0;
 
     private static float lifeChance = 0f;
@@ -409,32 +409,42 @@ public class life extends Application {
 
                 //living cell
                 if (map[i][j] > 0){
-
+                    //todo implement dying from age
                     //normal cell
                     if(map[i][j]%2==1){
-                        buffer[i][j] = (neighors1 >= cell1rules[0] && neighors1 <= cell1rules[1]) ? 1 : 0;
-
-                        if(cell1AgeLimit!=0){
+                        if(neighors1 < cell1rules[0] || neighors1 > cell1rules[1]){
+                            buffer[i][j] = 0;
+                        }
+                        else if(cell1AgeLimit!=0){
                             //age
-                            buffer[i][j] += 2;
-                            if(buffer[i][j]>2*cell1AgeLimit-1){
-                                //cell too old
+                            buffer[i][j] = map[i][j]+2;
+                            if(buffer[i][j] > 2*cell1AgeLimit-1){
                                 buffer[i][j] = 0;
                             }
+                        }
+
+                        else{
+                            buffer[i][j] = 1;
                         }
                     }
 
                     //red cell
                     else{
-                        buffer[i][j] = (neighors2 >= cell2rules[0] && neighors2 <= cell2rules[1]) ? 2 : 0;
+                        if(neighors2 < cell2rules[0] || neighors2 > cell2rules[1]){
+                            buffer[i][j] = 0;
+                        }
 
-                        if(cell2AgeLimit!=0){
+                        else if(cell2AgeLimit!=0){
                             //age
-                            buffer[i][j] += 2;
+                            buffer[i][j] = map[i][j]+2;
                             if(buffer[i][j]>2*cell2AgeLimit){
                                 //die
                                 buffer[i][j] = 0;
                             }
+                        }
+
+                        else{
+                            buffer[i][j] = 2;
                         }
                     }
 
