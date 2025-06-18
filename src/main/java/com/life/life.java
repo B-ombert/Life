@@ -2,6 +2,7 @@ package com.life;
 
 import javafx.animation.Timeline;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
@@ -12,6 +13,9 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.stage.Stage;
+
+import java.util.HashSet;
+import java.util.Set;
 
 
 public class life extends Application {
@@ -32,7 +36,8 @@ public class life extends Application {
     //survive min/ survive max/ birth
     private static int[] cell1rules = {2, 3, 3};
     private static int[] cell2rules = {2, 3, 3};
-    private static int cell1AgeLimit = 4;
+
+    private static int cell1AgeLimit = 0;
     private static int cell2AgeLimit = 0;
 
     private static double lifeChance = 0d;
@@ -42,6 +47,9 @@ public class life extends Application {
     private int[][] buffer = new int[rows][cols];
 
     private Canvas canvas;
+
+    private Set<String> mapStates = new HashSet<>();
+    private boolean[] hasCycle = {false};
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -99,7 +107,7 @@ public class life extends Application {
         double maxRevivalChance = 0.05;
         double revivalChance = 0.001;
 
-        Slider revivalChanceSlider = new Slider(0.0, maxRevivalChance, maxRevivalChance);
+        Slider revivalChanceSlider = new Slider(0.0, maxRevivalChance, Math.min(revivalChance, maxRevivalChance));
         revivalChanceSlider.setBlockIncrement(revivalChance/50);
         revivalChanceSlider.setPrefWidth(200);
 
@@ -307,8 +315,8 @@ public class life extends Application {
                 new Label("Y:"), yField,
                 placeButton);
 
-        HBox rowsBox = new HBox(5, new Label("Riadky:"), rowsField);
-        HBox colsBox = new HBox(5, new Label("Stĺpce:"), colsField);
+        HBox rowsBox = new HBox(5, new Label("Rows:"), rowsField);
+        HBox colsBox = new HBox(5, new Label("Columns:"), colsField);
         HBox delayBox = new HBox(5, new Label("Delay (ms):"), delayField);
 
         HBox paramsBox = new HBox(15, rowsBox, colsBox, delayBox);
@@ -384,6 +392,27 @@ public class life extends Application {
 
                             if(running){
                                 update();
+
+                                int[][] pattern = smallestRectangle(map);
+                                if(pattern != null){
+                                    String patternKey = mapToString(pattern);
+
+                                    if(mapStates.contains(patternKey)){
+                                        if(!hasCycle[0]){
+                                            hasCycle[0] = true;
+
+                                            Platform.runLater(() -> {
+                                                Alert alert = new Alert(Alert.AlertType.INFORMATION, "Cycle was detected");
+                                                pauseButton.fire();
+                                                alert.showAndWait();
+                                            });
+                                        }
+                                    }
+                                    else{
+                                        mapStates.add(patternKey);
+                                    }
+                                }
+
                                 remainingTime[0] = delay;
                                 javafx.application.Platform.runLater(this::draw);
                             }
@@ -401,6 +430,8 @@ public class life extends Application {
             running = false;
             pauseButton.setText("Resume");
             timerLabel.setText("Paused");
+            mapStates.clear();
+            hasCycle[0] = false;
 
             initial = copy(map);
 
@@ -416,6 +447,8 @@ public class life extends Application {
             delay = 500;
             pauseButton.setText("Resume");
             timerLabel.setText("Paused");
+            mapStates.clear();
+            hasCycle[0] = false;
 
             if(originalState != null) {
                 map = copy(originalState);
@@ -459,6 +492,27 @@ public class life extends Application {
 
                 if (running) {
                     update();
+
+                    int[][] pattern = smallestRectangle(map);
+                    if(pattern != null){
+                        String patternKey = mapToString(pattern);
+
+                        if(mapStates.contains(patternKey)){
+                            if(!hasCycle[0]){
+                                hasCycle[0] = true;
+
+                                Platform.runLater(() -> {
+                                    Alert alert = new Alert(Alert.AlertType.INFORMATION, "Cycle was detected");
+                                    pauseButton.fire();
+                                    alert.showAndWait();
+                                });
+                            }
+                        }
+                        else{
+                            mapStates.add(patternKey);
+                        }
+                    }
+
                     remainingTime[0] = delay;
                     javafx.application.Platform.runLater(this::draw);
                 }
@@ -467,14 +521,6 @@ public class life extends Application {
 
         simulationThread.setDaemon(true);
         simulationThread.start();
-    }
-
-    private void randomGrid(){
-        for (int i = 0; i < rows; i++) {
-            for (int j = 0; j < cols; j++) {
-                map[i][j] = Math.random() < 0.2 ? 1 : 0;
-            }
-        }
     }
 
     private void generateGrid(GridPane gridPane, ComboBox<String> cellType){
@@ -655,8 +701,6 @@ public class life extends Application {
         return copy;
     }
 
-
-
     private int[][] createPattern(int patternID){
         //glider
         if(patternID == 0){
@@ -719,6 +763,47 @@ public class life extends Application {
                 }
             }
         }
+    }
+
+    private int[][] smallestRectangle(int[][] grid){
+
+        int minRow = grid.length, maxRow = -1;
+        int minCol = grid[0].length, maxCol = -1;
+
+        for(int i = 0; i < grid.length; i++){
+            for(int j = 0; j < grid[0].length; j++){
+                if(grid[i][j] > 0){
+                    minRow = Math.min(minRow, i);
+                    minCol = Math.min(minCol, j);
+                    maxRow = Math.max(maxRow, i);
+                    maxCol = Math.max(maxCol, j);
+                }
+            }
+        }
+
+        if(maxRow < minRow || maxCol < minCol){
+            return null;
+        }
+
+        int[][] minRectangle = new int[maxRow-minRow+1][maxCol-minCol+1];
+        for(int i = minRow; i <= maxRow; i++){
+            for(int j = minCol; j <= maxCol; j++){
+                minRectangle[i-minRow][j-minCol] = grid[i][j];
+            }
+        }
+
+        return minRectangle;
+    }
+
+    private String mapToString(int[][] map){
+        StringBuilder sb = new StringBuilder();
+        for(int[] row : map){
+            for(int col : row){
+                sb.append(col);
+            }
+            sb.append("\n");
+        }
+        return sb.toString();
     }
 
     public static void main(String[] args) {
