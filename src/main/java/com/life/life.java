@@ -168,8 +168,39 @@ public class life extends Application {
                 revivalBox,
                 priorityBox
         );
+
         specialBox.setPadding(new Insets(5));
         specialBox.setAlignment(Pos.CENTER_LEFT);
+
+
+        GridPane rulesGrid = new GridPane();
+        rulesGrid.setHgap(10);
+        rulesGrid.setVgap(10);
+
+        rulesGrid.add(new Label("Survive Min"), 0, 0);
+        rulesGrid.add(new Label("Survive Max"), 1, 0);
+        rulesGrid.add(new Label("Birth"), 2, 0);
+
+        TextField cell1SurviveMin = new TextField(String.valueOf(cell1rules[0]));
+        TextField cell1SurviveMax = new TextField(String.valueOf(cell1rules[1]));
+        TextField cell1Birth = new TextField(String.valueOf(cell1rules[2]));
+
+        rulesGrid.add(cell1SurviveMin, 0, 1);
+        rulesGrid.add(cell1SurviveMax, 1, 1);
+        rulesGrid.add(cell1Birth, 2, 1);
+
+        rulesGrid.add(new Label("Black cells"), 3, 1);
+
+        TextField cell2SurviveMin = new TextField(String.valueOf(cell2rules[0]));
+        TextField cell2SurviveMax = new TextField(String.valueOf(cell2rules[1]));
+        TextField cell2Birth = new TextField(String.valueOf(cell2rules[2]));
+
+        rulesGrid.add(cell2SurviveMin, 0, 2);
+        rulesGrid.add(cell2SurviveMax, 1, 2);
+        rulesGrid.add(cell2Birth, 2, 2);
+
+        rulesGrid.add(new Label("Red cells"), 3, 2);
+
 
         ScrollPane scrollPane = new ScrollPane(gridPane);
         scrollPane.setPrefSize(865, 865);
@@ -227,6 +258,14 @@ public class life extends Application {
                 cols = Integer.parseInt(colsField.getText());
                 delay = Integer.parseInt(delayField.getText());
 
+                cell1rules[0] = parseRule(cell1SurviveMin.getText());
+                cell1rules[1] = parseRule(cell1SurviveMax.getText());
+                cell1rules[2] = parseRule(cell1Birth.getText());
+
+                cell2rules[0] = parseRule(cell2SurviveMin.getText());
+                cell2rules[1] = parseRule(cell2SurviveMax.getText());
+                cell2rules[2] = parseRule(cell2Birth.getText());
+
                 if(rows <= 0 || cols <= 0 || delay <= 0) {
                     throw new NumberFormatException();
                 }
@@ -263,7 +302,7 @@ public class life extends Application {
 
                 run(primaryStage);
 
-            }catch (NumberFormatException ex) {
+            }catch (Exception ex) {
                 Alert alert = new Alert(Alert.AlertType.ERROR, "Invalid input");
                 alert.showAndWait();
             }
@@ -332,6 +371,7 @@ public class life extends Application {
                 patternBox,
                 paramsBox,
                 specialBox,
+                rulesGrid,
                 spacer,
                 buttonsBox);
 
@@ -804,6 +844,14 @@ public class life extends Application {
             sb.append("\n");
         }
         return sb.toString();
+    }
+
+    private int parseRule(String rule){
+        int value = Integer.parseInt(rule);
+        if(value < 0 || value > 8){
+            throw new IllegalArgumentException("Invalid input");
+        }
+        return value;
     }
 
     public static void main(String[] args) {
