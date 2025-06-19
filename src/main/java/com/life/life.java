@@ -18,45 +18,72 @@ import java.util.HashSet;
 import java.util.Set;
 
 
+/**
+ * Main class implementing Conway's Game of Life with additional custom rules.
+ * Includes GUI configuration, simulation control, and special behavior like aging and revival.
+ */
 public class life extends Application {
-
+    /** Main application window. */
     private Stage primaryStage;
 
     private Thread simulationThread;
     private volatile boolean running = false;
 
+    /** Height of the board (number of rows). */
     private static int rows = 40;
+    /** Width of the board (number of columns). */
     private static int cols = 40;
+
     private static int cellSize = 20;
+    /** Delay in milliseconds between generations. */
     private static int delay = 500;
 
+    /** State used when simulation is configured or restarted. */
     private static int[][] initial;
+    /** Original state of the board used for resetting. */
     private int[][] originalState = null;
 
-    //survive min/ survive max/ birth
+    /** Rules for cell type 1: surviveMin, surviveMax, birth. */
     private static int[] cell1rules = {2, 3, 3};
+    /** Rules for cell type 2: surviveMin, surviveMax, birth. */
     private static int[] cell2rules = {2, 3, 3};
 
+    /** Age limit for cell type 1, value 0 stands for infinite */
     private static int cell1AgeLimit = 0;
+    /** Age limit for cell type 2, value 0 stands for infinite */
     private static int cell2AgeLimit = 0;
 
+    /** Probability of random revival for a dead cell. */
     private static double lifeChance = 0d;
+    /** Probability that a revived cell will be type 1 (black). */
     private static double blackRandomPriority = 1d;
 
+    /** 2D array representing the current state of the board. */
     private int[][] map = new int[rows][cols];
+    /** 2D array representing the future state of the board. */
     private int[][] buffer = new int[rows][cols];
 
     private Canvas canvas;
 
+    /** Set of all previous states with normalization */
     private Set<String> mapStates = new HashSet<>();
     private boolean[] hasCycle = {false};
 
+    /**
+     * Initializes the JavaFX application and opens the setup window.
+     *
+     * @param stage the main stage for this application
+     */
     @Override
     public void start(Stage stage) throws Exception {
         this.primaryStage = stage;
         openSetup();
     }
 
+    /**
+     * Opens the configuration window where the user can define the size, rules, and options
+     * before starting the simulation.
+     */
     private void openSetup() {
         Stage setupStage = new Stage();
         setupStage.setTitle("Setup");
@@ -385,6 +412,12 @@ public class life extends Application {
         setupStage.show();
     }
 
+    /**
+     * Starts the simulation based on the configuration provided.
+     * Initializes the map and starts the simulation thread.
+     *
+     * @param stage the main stage of application
+     */
     private void run(Stage stage) {
         if(originalState == null) {
             originalState = copy(initial);
@@ -563,6 +596,11 @@ public class life extends Application {
         simulationThread.start();
     }
 
+    /**
+     * Draw the grid for configuration window
+     * @param gridPane current state of the grid
+     * @param cellType type of new placed cell
+     * */
     private void generateGrid(GridPane gridPane, ComboBox<String> cellType){
         gridPane.getChildren().clear();
         for (int i = 0; i < rows; i++) {
@@ -595,6 +633,10 @@ public class life extends Application {
         }
     }
 
+    /**
+     * Updates the state of the simulation by computing the next generation of cells
+     * based on defined rules and aging behavior.
+     */
     private void update(){
         for (int i = 0; i < rows; i++) {
             for (int j = 0; j < cols; j++) {
@@ -681,6 +723,13 @@ public class life extends Application {
         buffer = temp;
     }
 
+    /**
+     * Counts the number of neighboring cells of a given type around a specific cell.
+     *
+     * @param row the y-coordinate of the cell
+     * @param col the x-coordinate of the cell
+     * @return the number of live neighbors the type 1
+     */
     private int liveNeighbors1(int row, int col){
         int count = 0;
         for (int dr = -1; dr <= 1; dr++){
@@ -694,6 +743,13 @@ public class life extends Application {
         return count;
     }
 
+    /**
+     * Counts the number of neighboring cells of a given type around a specific cell.
+     *
+     * @param row the y-coordinate of the cell
+     * @param col the x-coordinate of the cell
+     * @return the number of live neighbors of type 2
+     */
     private int liveNeighbors2(int row, int col){
         int count = 0;
         for (int dr = -1; dr <= 1; dr++){
@@ -707,6 +763,9 @@ public class life extends Application {
         return count;
     }
 
+    /**
+     * Redraws the canvas based on the current state of the map.
+     */
     private void draw(){
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.setFill(Color.WHITE);
@@ -723,12 +782,23 @@ public class life extends Application {
         }
     }
 
+    /**
+     * Returns the color for specified type of cell
+     * @param color integer representation of cell type
+     * @return hex code for color of the cell
+     * */
     private String colorFromInt(int color){
         if(color == 0) return "FFFFFF";
         if(color == -1) return "#00FF00";
         return color%2 == 0 ? "#FF0000" : "#000000";
     }
 
+    /**
+     * Creates a deep copy of a 2D array representing the board state.
+     *
+     * @param original the array to copy
+     * @return a new deep-copied array
+     */
     private int[][] copy(int[][] original){
         int[][] copy = new int[rows][cols];
 
@@ -741,6 +811,11 @@ public class life extends Application {
         return copy;
     }
 
+    /**
+     * Creates a matrix representing one of predifined patterns
+     * @param patternID identifier for pattern
+     * @return integer matrix of pattern
+     * */
     private int[][] createPattern(int patternID){
         //glider
         if(patternID == 0){
@@ -786,6 +861,13 @@ public class life extends Application {
         return null;
     }
 
+    /**
+     * Place one of predifined patterns on the grid of configuration screen
+     * @param grid current map
+     * @param startX x coordinate on the map selected by user
+     * @param startY y coordinate on the map selected by user
+     * @param patternID identifier for the pattern
+     * */
     private void placePattern(int[][] grid, int startX, int startY, int patternID){
         if(patternID < 0 || patternID > 2){
             return;
@@ -805,6 +887,12 @@ public class life extends Application {
         }
     }
 
+    /**
+     * Extracts the smallest non-zero rectangle from the map for cycle detection.
+     *
+     * @param grid the current map
+     * @return a new 2D array representing the smallest active rectangle
+     */
     private int[][] smallestRectangle(int[][] grid){
 
         int minRow = grid.length, maxRow = -1;
@@ -835,6 +923,13 @@ public class life extends Application {
         return minRectangle;
     }
 
+    /**
+     * Converts a 2D array of the map to a string representation.
+     * Used for detecting repeating patterns.
+     *
+     * @param map the 2D map array
+     * @return string representation of the map
+     */
     private String mapToString(int[][] map){
         StringBuilder sb = new StringBuilder();
         for(int[] row : map){
@@ -846,6 +941,9 @@ public class life extends Application {
         return sb.toString();
     }
 
+    /**
+     * parsing and evaluating of rules for surviving and rebirth of cells from user input string
+     * */
     private int parseRule(String rule){
         int value = Integer.parseInt(rule);
         if(value < 0 || value > 8){
@@ -854,6 +952,11 @@ public class life extends Application {
         return value;
     }
 
+    /**
+     * Main method to launch the JavaFX application.
+     *
+     * @param args command-line arguments (not used)
+     */
     public static void main(String[] args) {
         launch(args);
     }
